@@ -4,59 +4,126 @@ import pandas as pd
 import streamlit as st
 import bracket_logic as bl
 
-
 # --- INITIAL SETUP ---
-st.set_page_config(layout="wide", page_title="Levy Bros NBA Bracket")
+st.set_page_config(layout="wide", page_title=f"🏀 NBA Playoff {datetime.datetime.now().year} Prediction")
 
 # CSS to force wide layout and center elements
 st.markdown("""
     <style>
-    .block-container { max-width: 100%; padding: 2rem 1rem; }
-    
-    [data-testid="stHorizontalBlock"] { align-items: center; }
-    .stButton button { display: block; margin: 0 auto; }
-    [data-testid="stVerticalBlock"] > div { gap: 0.5rem; }
+            /* =========================================
+            1. FONTS & TYPOGRAPHY
+            ========================================= */
+            @import url('https://fonts.googleapis.com/css2?family=Kanit:wght@700;900&family=Roboto+Condensed:wght@400;700&display=swap');
 
-    /* Center text and headers in the Leaderboard Dataframe */
-    div[data-testid="stDataFrame"] div[role="gridcell"] > div {
-        justify-content: center !important;
-        text-align: center !important;
-    }
-    div[data-testid="stDataFrame"] div[role="columnheader"] > div {
-        justify-content: center !important;
-    }
-    [data-testid="stTable"] {
-        margin: 0 auto;
-        width: 100%;
-    }
-    [data-testid="stTable"] th, [data-testid="stTable"] td {
-        text-align: center !important;
-        vertical-align: middle !important;
-    }
-    
-    /* Reduce horizontal gap between all columns */
-    [data-testid="column"] {
-        padding-left: 0.5rem !important;
-        padding-right: 0.5rem !important;
-    }
+            html, body, [class#="css"] {
+                font-family: 'Roboto Condensed', sans-serif
+            }
+
+            h1, h2, h3 {
+                font-family: 'Kanit', sans-serif !important;
+                text-transform: uppercase;
+                letter-spacing: 2px;
+                font-weight: 900 !important;
+            }
+
+            .stMarkdown p, .stButton button {
+                font-size: 1.1rem !important;
+                font-weight: 700 !important;
+            }
             
-    /* Target the center column (NBA Finals) to pull adjacent columns inward */
-    /* This makes the space between Conf Finals and Finals 'less big' */
-    div[data-testid="column"]:nth-of-type(4) {
-        margin-left: -50px !important;
-        margin-right: -50px !important;
-        z-index: 10; /* Ensures Finals stays on top if they overlap */
-    }
-    
-    /* Vertical centering for the vs text */
-    .vs-text {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        height: 100%;
-        font-weight: bold;
-        color: #888;
-    }
+            /* =========================================
+            2. GLOBAL APP BACKGROUND & LAYOUT
+            ========================================= */
+            .stApp {
+                background-image: linear-gradient(rgba(0, 0, 0, 0.8), rgba(128, 128, 128, 0.8), rgba(0, 0, 0, 0.8)), 
+                                url("https://i.pinimg.com/736x/47/a2/46/47a246aaebfa4f2925f8dd7d4c369271.jpg");
+                background-attachment: fixed;
+                background-size: cover;
+            }
+
+            .block-container {
+                max-width: 100%; 
+                padding: 2rem 1rem;
+            }
+
+            /* =========================================
+            3. BRACKET & COLUMN STYLING
+            ========================================= */
+            /* Align items vertically in the series rows */
+            [data-testid="stHorizontalBlock"] {
+                align-items: center;
+            }
+
+            /* Standard column spacing */
+            [data-testid="column"] {
+                padding-left: 0.5rem !important;
+                padding-right: 0.5rem !important;
+            }
+                    
+            /* Pull the center Finals column inward to tighten space */
+            div[data-testid="column"]:nth-of-type(4) {
+                margin-left: -50px !important;
+                margin-right: -50px !important;
+                z-index: 10; /* Ensures Finals stays on top if they overlap */
+            }
+            
+            /* Vertical Block spacing */
+            [data-testid="stVerticalBlock"] > div {
+                gap: 0.5rem; 
+            }
+
+            /* =========================================
+            4. COMPONENT STYLING (Inputs, Buttons, Tables)
+            ========================================= */
+            /* Number Input Boxes */
+            div[data-testid="stNumberInput"] input {
+                font-family: 'Kanit', sans-serif !important;
+                font-size: 1.5rem !important;
+                color: #000 !important;
+                background-color: rgba(255, 255, 255, 0.8) !important;
+                text-align: center !important;
+            }
+            
+            /* Center Buttons */
+            .stButton button { 
+                display: block; 
+                margin: 0 auto; 
+            }
+
+            /* VS Text Centering */
+            .vs-text {
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                height: 100%;
+                font-weight: bold;
+                color: #888;
+            }
+
+            /* =========================================
+            5. LEADERBOARD & DATAFRAMES
+            ========================================= */
+            /* Dataframe Cells */
+            div[data-testid="stDataFrame"] div[role="gridcell"] > div {
+                justify-content: center !important;
+                text-align: center !important;
+            }
+            
+            /* Dataframe Headers */
+            div[data-testid="stDataFrame"] div[role="columnheader"] > div {
+                justify-content: center !important;
+            }
+
+            /* Leaderboard Table Centering */
+            [data-testid="stTable"] {
+                margin: 0 auto;
+                width: 100%;
+            }
+
+            [data-testid="stTable"] th, [data-testid="stTable"] td {
+                text-align: center !important;
+                vertical-align: middle !important;
+            }
     </style>
     """, unsafe_allow_html=True)
 
@@ -82,7 +149,7 @@ def render_series_input(game_id, bracket, disabled=False, prefix=""):
     
     version = st.session_state.get('bracket_version', 0)
 
-    col_h_logo, col_h_score, col_vs, col_a_score, col_a_logo = st.columns([1, 1.2, 0.4, 1.2, 1], vertical_alignment="center")
+    col_h_logo, col_h_score, col_vs, col_a_score, col_a_logo = st.columns([1, 1, 0.4, 1, 1], vertical_alignment="center")
 
     col_h_logo.image(f"logos/{home}.svg", width=50)
 
@@ -164,7 +231,7 @@ def render_series_input(game_id, bracket, disabled=False, prefix=""):
 
 
 def draw_bracket(bracket_data, disabled=False, prefix=""):
-    col_w1, col_w2, col_wf, col_fin, col_ef, col_e2, col_e1 = st.columns([2, 2, 2, 3, 2, 2, 2])
+    col_w1, col_w2, col_wf, col_fin, col_ef, col_e2, col_e1 = st.columns([2, 2, 2, 2.5, 2, 2, 2])
 
     with col_w1:
         render_series_input("W_R1_1v8", bracket_data, disabled, prefix=prefix)
@@ -230,7 +297,7 @@ def draw_bracket(bracket_data, disabled=False, prefix=""):
 # --- LOGIN PAGE ---
 def login_page():
     st.markdown("<div style='height: 100px;'></div>", unsafe_allow_html=True)
-    st.markdown("<h1 style='text-align: center;'>🏀 Levy Bros NBA Bracket</h1>", unsafe_allow_html=True)
+    st.markdown("<h1 style='text-align: center;'>🏀 NBA Bracket Predictions</h1>", unsafe_allow_html=True)
 
     # Center the login box
     _, col, _ = st.columns([1, 1, 1])
@@ -304,7 +371,6 @@ else:
                 bl.fetch_from_nba_api.clear() # Reset cache to use new dates
                 st.success("Configuration saved to disk!")
     
-    # st.title(f"NBA Playoff {datetime.datetime.now().year}")
     playoff_year = st.session_state.point_config['playoff_start'].year
     st.markdown(f"<h1 style='text-align: center;'>NBA Playoff {playoff_year}</h1>", unsafe_allow_html=True)
     if not bl.is_locked():
